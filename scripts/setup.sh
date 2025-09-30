@@ -32,8 +32,13 @@ install_docker() {
         sudo apt-get install -y docker-ce docker-ce-cli containerd.io
         sudo usermod -aG docker $USER
         echo "Docker installed successfully!"
+        echo "Activating docker group for current session..."
+        newgrp docker
     else
         echo "Docker is already installed"
+        echo "Ensuring user is in docker group..."
+        sudo usermod -aG docker $USER
+        newgrp docker
     fi
 }
 

@@ -1,84 +1,46 @@
 #!/bin/bash
-# setup.sh - Universal setup script for Docker checkpoint lab
+# deploy_ec2.sh - Script to setup and run the Docker checkpoint project on EC2
 
 set -e
 
-echo "=== Docker Container Checkpoint Lab Setup ==="
+echo "=== EC2 Docker Checkpoint Setup Script ==="
 echo
-
-# Color output functions
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
 
 # Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Check if running as root (not recommended)
-if [ "$EUID" -eq 0 ]; then
-    log_warn "Running as root. This script will add current user to docker group."
-    log_warn "Consider running as a regular user with sudo access."
-fi
-
 # Install Docker if not present
 install_docker() {
     if ! command_exists docker; then
-        log_info "Installing Docker..."
-
-        # Update package index
+        echo "Installing Docker..."
         sudo apt-get update
-
-        # Install required packages
         sudo apt-get install -y \
             ca-certificates \
             curl \
             gnupg \
             lsb-release
 
-        # Add Docker's official GPG key
-        sudo mkdir -p /etc/apt/keyrings
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
-        # Set up repository
         echo \
-          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
           $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-        # Install Docker Engine
         sudo apt-get update
-        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-        # Add user to docker group
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
         sudo usermod -aG docker $USER
-
-        log_info "Docker installed successfully!"
-        log_warn "You may need to log out and back in for group changes to take effect"
+        echo "Docker installed successfully!"
     else
-        log_info "Docker is already installed"
-        docker --version
+        echo "Docker is already installed"
     fi
 }
 
 # Install CRIU
 install_criu() {
     if ! command_exists criu; then
-        log_info "Installing CRIU..."
-
+        echo "Installing CRIU..."
         sudo apt-get update
         sudo apt-get install -y criu
 
@@ -87,21 +49,17 @@ install_criu() {
 
         # Verify installation
         criu --version
-        log_info "CRIU installed successfully!"
+        echo "CRIU installed successfully!"
     else
-        log_info "CRIU is already installed"
+        echo "CRIU is already installed"
         criu --version
-
-        # Ensure capabilities are set
-        sudo setcap cap_sys_admin,cap_sys_ptrace,cap_sys_chroot+ep $(which criu)
     fi
 }
 
 # Install Go if not present
 install_go() {
     if ! command_exists go; then
-        log_info "Installing Go..."
-
+        echo "Installing Go..."
         GO_VERSION="1.21.5"
         wget -q "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
         sudo rm -rf /usr/local/go
@@ -109,23 +67,21 @@ install_go() {
         rm "go${GO_VERSION}.linux-amd64.tar.gz"
 
         # Add Go to PATH
-        if ! grep -q "/usr/local/go/bin" ~/.bashrc; then
-            echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-        fi
+        export PATH=$PATH:/usr/local/go/bin
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
         export PATH=$PATH:/usr/local/go/bin
 
         go version
-        log_info "Go installed successfully!"
+        echo "Go installed successfully!"
     else
-        log_info "Go is already installed"
+        echo "Go is already installed"
         go version
     fi
 }
 
-# Enable Docker experimental features
+# Enable Docker experimental features for checkpoint support
 enable_docker_experimental() {
-    log_info "Enabling Docker experimental features..."
-
+    echo "Enabling Docker experimental features..."
     sudo mkdir -p /etc/docker
 
     # Create or update Docker daemon configuration
@@ -138,25 +94,13 @@ EOF
 
     # Restart Docker to apply changes
     sudo systemctl restart docker
-
-    # Verify experimental features
-    sleep 2
-    if docker version 2>/dev/null | grep -q "Experimental.*true"; then
-        log_info "Docker experimental features enabled successfully!"
-    else
-        log_warn "Could not verify experimental features. They may need time to take effect."
-    fi
+    echo "Docker experimental features enabled!"
 }
 
 # Build the checkpoint application
 build_application() {
-    log_info "Building the Docker checkpoint application..."
-
-    # Ensure we're in the right directory
-    if [ ! -f "main.go" ]; then
-        log_error "main.go not found. Please run this script from the lab directory."
-        exit 1
-    fi
+    echo "Building the Docker checkpoint application..."
+    cd /home/ubuntu/docker-checkpoint
 
     # Download dependencies and create go.sum
     go mod tidy
@@ -167,67 +111,21 @@ build_application() {
 
     # Make it executable
     chmod +x docker-checkpoint
+    chmod +x test_checkpoint.sh
 
-    log_info "Application built successfully!"
+    echo "Application built successfully!"
 }
 
-# Run a simple test
-run_test() {
-    log_info "Running a basic functionality test..."
 
-    # Test Docker access
-    if ! docker ps >/dev/null 2>&1; then
-        log_error "Cannot access Docker. You may need to:"
-        log_error "1. Log out and back in (for group membership)"
-        log_error "2. Start Docker daemon: sudo systemctl start docker"
-        return 1
-    fi
-
-    # Test CRIU access
-    if ! sudo criu check >/dev/null 2>&1; then
-        log_warn "CRIU check failed. Some features may not work properly."
-    fi
-
-    # Test the application help
-    if ./docker-checkpoint -h >/dev/null 2>&1; then
-        log_info "Application responds correctly!"
-    else
-        log_error "Application failed to respond to help command"
-        return 1
-    fi
-
-    # Quick container test
-    log_info "Testing with a simple container..."
-
-    docker run -d --name test-setup alpine sleep 10 >/dev/null 2>&1
-    sleep 1
-
-    if sudo timeout 30 ./docker-checkpoint -container test-setup -name test-run >/dev/null 2>&1; then
-        log_info "Basic checkpoint test PASSED!"
-    else
-        log_warn "Basic checkpoint test failed, but setup is complete."
-        log_warn "Check the troubleshooting section in README.md"
-    fi
-
-    # Cleanup
-    docker stop test-setup >/dev/null 2>&1 || true
-    docker rm test-setup >/dev/null 2>&1 || true
-    rm -rf /tmp/docker-checkpoints/test-setup >/dev/null 2>&1 || true
-}
 
 # Main execution
 main() {
-    log_info "Starting setup for Docker checkpoint lab..."
-    log_info "This script will install Docker, CRIU, and Go if they're not present"
+    echo "Starting EC2 setup for Docker checkpoint project..."
+    echo "This script will install Docker, CRIU, and Go if they're not present"
     echo
 
-    # Check for Ubuntu
-    if ! grep -q "Ubuntu" /etc/os-release 2>/dev/null; then
-        log_warn "This script is designed for Ubuntu. It may work on other Debian-based systems."
-    fi
-
     # Update system packages
-    log_info "Updating system packages..."
+    echo "Updating system packages..."
     sudo apt-get update
 
     # Install prerequisites
@@ -241,39 +139,27 @@ main() {
 
     # Build the application
     echo
-    log_info "Setting up the checkpoint application..."
+    echo "Building the checkpoint application..."
     build_application
 
     echo
-    log_info "=== Setup Complete ==="
+    echo "=== Setup Complete ==="
     echo
-    log_info "You can now use the checkpoint tool:"
-    log_info "  sudo ./docker-checkpoint -container <container-name>"
+    echo "You can now use the checkpoint tool:"
+    echo "  sudo ./docker-checkpoint -container <container-name>"
     echo
-    log_info "Quick start:"
-    log_info "  1. Start a container: docker run -d --name myapp alpine sleep 3600"
-    log_info "  2. Checkpoint it: sudo ./docker-checkpoint -container myapp"
-    log_info "  3. Check results: ls -la /tmp/docker-checkpoints/myapp/"
+    echo "To run the test script:"
+    echo "  sudo ./test_checkpoint.sh"
     echo
-    log_info "Run './scripts/test.sh' for comprehensive testing"
+    echo "Example usage:"
+    echo "  1. Start a container: docker run -d --name myapp alpine sleep 3600"
+    echo "  2. Checkpoint it: sudo ./docker-checkpoint -container myapp"
     echo
 
     # Optionally run a test
     read -p "Do you want to run a quick test? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        run_test
-    fi
-
-    echo
-    log_info "Setup completed successfully! 🎉"
-
-    if groups $USER | grep -q docker; then
-        log_info "You can now use Docker without sudo"
-    else
-        log_warn "You may need to log out and back in for Docker group membership to take effect"
-    fi
+    
 }
 
 # Run main function
-main "$@"
+main

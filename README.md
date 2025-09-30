@@ -144,6 +144,7 @@ sudo ./docker-checkpoint -container myapp -pre-dump=true
 docker run -d --name nginx -p 8080:80 nginx
 sudo ./docker-checkpoint -container nginx -tcp=true
 ```
+<img width="1478" height="883" alt="image" src="https://github.com/user-attachments/assets/a0482ac6-a796-4347-811c-70d5fefff890" />
 
 ## Architecture & Implementation
 <img width="956" height="1627" alt="go-criu-workflow drawio" src="https://github.com/user-attachments/assets/65ee3e81-4664-4362-8784-efeca0c94645" />

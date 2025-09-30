@@ -156,9 +156,7 @@ main() {
     echo "  2. Checkpoint it: sudo ./docker-checkpoint -container myapp"
     echo
 
-    # Optionally run a test
-    read -p "Do you want to run a quick test? (y/n) " -n 1 -r
-    
+   
 }
 
 # Run main function

@@ -161,6 +161,89 @@ sudo ./docker-checkpoint -container nginx -tcp=true
    - Shows CRIU logs on failure
    - Validates prerequisites
 
+### Go Code Implementation
+
+#### Main Function Flow
+The application follows a structured approach:
+
+```go
+func main() {
+    // Parse command line flags using Go's flag package
+    flag.StringVar(&containerName, "container", "", "Container name or ID to checkpoint")
+    flag.BoolVar(&leaveRunning, "leave-running", true, "Leave container running after checkpoint")
+    // ... other flags
+
+    // Create options struct and call checkpoint function
+    opts := Options{LeaveRunning: leaveRunning, TCPEstablished: tcpEstablished, ...}
+    checkpointContainer(containerName, checkpointName, baseDir, opts)
+}
+```
+
+#### Docker API Integration
+The `inspectContainer()` function demonstrates Docker API usage:
+
+```go
+func inspectContainer(containerName string) (*ContainerInfo, error) {
+    // Create Docker client using environment variables (DOCKER_HOST, etc.)
+    cli, err := client.NewClientWithOpts(client.FromEnv)
+
+    // Inspect container to get detailed information
+    containerJSON, err := cli.ContainerInspect(ctx, containerName)
+
+    // Extract critical information for checkpointing
+    info := &ContainerInfo{
+        ID:         containerJSON.ID[:12],                              // Short container ID
+        PID:        containerJSON.State.Pid,                          // Main process PID
+        RootFS:     containerJSON.GraphDriver.Data["MergedDir"],      // Container filesystem root
+        Runtime:    containerJSON.HostConfig.Runtime,                 // Container runtime (runc/containerd)
+    }
+
+    // Map all Linux namespaces for the container process
+    for _, ns := range []string{"ipc", "mnt", "net", "pid", "user", "uts", "cgroup"} {
+        info.Namespaces[ns] = fmt.Sprintf("/proc/%d/ns/%s", info.PID, ns)
+    }
+}
+```
+
+#### CRIU Configuration and Execution
+The `doCRIUCheckpoint()` function shows CRIU library usage:
+
+```go
+func doCRIUCheckpoint(info *ContainerInfo, checkpointDir string, opts Options) error {
+    // Initialize CRIU client from go-criu library
+    criuClient := criu.MakeCriu()
+    criuClient.SetCriuPath("criu")
+
+    // Configure CRIU options using protocol buffers
+    criuOpts := &rpc.CriuOpts{
+        Pid:            proto.Int32(int32(info.PID)),        // Target process PID
+        LogLevel:       proto.Int32(4),                      // Verbose logging
+        Root:           proto.String(info.RootFS),           // Container root filesystem
+        ManageCgroups:  proto.Bool(true),                    // Handle cgroup hierarchy
+        ShellJob:       proto.Bool(true),                    // Required for docker containers
+
+        // Mark Docker-managed mounts as external (don't checkpoint them)
+        External: []string{
+            "mnt[/proc]:proc",         // Process filesystem
+            "mnt[/dev]:dev",           // Device filesystem
+            "mnt[/etc/hostname]:hostname", // Docker networking files
+            // ... other Docker bind mounts
+        },
+    }
+
+    // Execute the checkpoint operation
+    return criuClient.Dump(criuOpts, nil)
+}
+```
+
+#### Key Go Patterns Used
+
+1. **Struct-based Configuration**: Uses `ContainerInfo` and `Options` structs for clean data organization
+2. **Error Wrapping**: Implements Go 1.13+ error wrapping with `fmt.Errorf("context: %w", err)`
+3. **Context Management**: Uses `context.Background()` for Docker API calls
+4. **Protocol Buffers**: Leverages protobuf for CRIU RPC communication
+5. **File Operations**: Standard `os` and `filepath` packages for directory management
+
 ### Container Information Structure
 
 ```go

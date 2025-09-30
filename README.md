@@ -445,16 +445,6 @@ tail -f /tmp/docker-checkpoints/<container>/<checkpoint>/dump.log
 - **Network**: Complex network configurations may need additional handling
 - **Volumes**: Persistent volumes are not checkpointed
 
-## Next Steps
-
-After completing this lab:
-
-1. **Restoration**: Implement checkpoint restoration functionality
-2. **Compression**: Add checkpoint compression to reduce file sizes
-3. **Remote Storage**: Integrate with cloud storage for checkpoint persistence
-4. **Automation**: Build CI/CD pipelines with checkpoint/restore
-5. **Kubernetes**: Extend to Kubernetes pod checkpointing
-
 ## Resources
 
 - [CRIU Documentation](https://criu.org/Documentation)

@@ -1,4 +1,4 @@
-# Docker Container Checkpoint with CRIU
+# Docker Container Checkpoint with Go-CRIU
 
 ## Introduction
 

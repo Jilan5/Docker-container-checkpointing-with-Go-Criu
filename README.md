@@ -105,23 +105,19 @@ ls -la /tmp/docker-checkpoints/test-app/checkpoint1/
 
 ### Command Line Options
 
-```
-Usage: ./docker-checkpoint -container <name> [options]
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `-container` | `string` | *required* | Container name or ID to checkpoint |
+| `-name` | `string` | `checkpoint1` | Name for the checkpoint |
+| `-dir` | `string` | `/tmp/docker-checkpoints` | Base directory for checkpoints |
+| `-leave-running` | `boolean` | `true` | Leave container running after checkpoint |
+| `-tcp` | `boolean` | `true` | Checkpoint established TCP connections |
+| `-file-locks` | `boolean` | `true` | Checkpoint file locks |
+| `-pre-dump` | `boolean` | `false` | Perform pre-dump for optimization |
 
-  -container string
-        Container name or ID to checkpoint (required)
-  -name string
-        Name for the checkpoint (default "checkpoint1")
-  -dir string
-        Base directory for checkpoints (default "/tmp/docker-checkpoints")
-  -leave-running
-        Leave container running after checkpoint (default true)
-  -tcp
-        Checkpoint established TCP connections (default true)
-  -file-locks
-        Checkpoint file locks (default true)
-  -pre-dump
-        Perform pre-dump for optimization (default false)
+**Usage:**
+```bash
+sudo ./docker-checkpoint -container <name> [options]
 ```
 
 ### Advanced Examples

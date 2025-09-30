@@ -170,7 +170,7 @@ type ContainerInfo struct {
 ### Part 2: CRIU Configuration
 
 CRIU requires specific configuration for Docker containers:
-<img width="1252" height="1159" alt="go-criu-d4 drawio" src="https://github.com/user-attachments/assets/cde03925-8e26-4530-a9ce-a3b49c88c3cb" />
+<img width="1252" height="1159" alt="go-criu-d4 drawio" src="https://github.com/user-attachments/assets/2740fd5b-3d51-408f-922f-c9ac36e7afe0" />
 
 ```go
 criuOpts := &rpc.CriuOpts{

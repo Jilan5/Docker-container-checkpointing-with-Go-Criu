@@ -236,13 +236,6 @@ func doCRIUCheckpoint(info *ContainerInfo, checkpointDir string, opts Options) e
 }
 ```
 
-#### Key Go Patterns Used
-
-1. **Struct-based Configuration**: Uses `ContainerInfo` and `Options` structs for clean data organization
-2. **Error Wrapping**: Implements Go 1.13+ error wrapping with `fmt.Errorf("context: %w", err)`
-3. **Context Management**: Uses `context.Background()` for Docker API calls
-4. **Protocol Buffers**: Leverages protobuf for CRIU RPC communication
-5. **File Operations**: Standard `os` and `filepath` packages for directory management
 
 ### Container Information Structure
 

@@ -1,4 +1,4 @@
-# Docker Container Checkpoint with Go-CRIU
+![criu-config-external-mounts](https://github.com/user-attachments/assets/7650fe5d-a2f0-49a0-ae11-64cd3831f124)# Docker Container Checkpoint with Go-CRIU
 
 ## Introduction
 
@@ -170,6 +170,92 @@ type ContainerInfo struct {
 ### Part 2: CRIU Configuration
 
 CRIU requires specific configuration for Docker containers:
+
+![Uploa<svg id="diagram4" viewBox="0 0 1000 900" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <marker id="arrowhead4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" fill="#666"/>
+                    </marker>
+                </defs>
+                
+                <rect x="350" y="20" width="300" height="80" fill="#42a5f5" stroke="#1976d2" class="box" rx="5"/>
+                <text x="500" y="50" text-anchor="middle" fill="white" class="title-text">🐳 Running Docker Container</text>
+                <text x="500" y="70" text-anchor="middle" fill="white" class="small-text">Filesystem Layers + Process</text>
+                
+                <rect x="50" y="150" width="400" height="250" fill="#f3e5f5" stroke="#7b1fa2" class="box" rx="5"/>
+                <text x="250" y="175" text-anchor="middle" fill="#7b1fa2" class="title-text">CRIU Configuration (criuOpts)</text>
+                
+                <text x="70" y="205" class="small-text">• Pid: target process ID</text>
+                <text x="70" y="230" class="small-text">• LogLevel: 4 (verbose)</text>
+                <text x="70" y="255" class="small-text">• Root: container filesystem path</text>
+                <text x="70" y="280" class="small-text">• ManageCgroups: true</text>
+                <text x="70" y="305" class="small-text">• ShellJob: true (for Docker)</text>
+                <text x="70" y="330" class="small-text">• LeaveRunning: configurable</text>
+                <text x="70" y="355" class="small-text">• ImagesDirectory: checkpoint path</text>
+                <text x="70" y="380" class="small-text">• External: [...mounts marked external]</text>
+                
+                <rect x="550" y="150" width="400" height="250" fill="#fff3e0" stroke="#f57c00" class="box" rx="5"/>
+                <text x="750" y="175" text-anchor="middle" fill="#f57c00" class="title-text">External Mounts (Excluded)</text>
+                
+                <rect x="570" y="195" width="360" height="30" fill="#ffe0b2" stroke="#e65100" class="box" rx="3"/>
+                <text x="750" y="215" text-anchor="middle" class="small-text">❌ /proc (process filesystem)</text>
+                
+                <rect x="570" y="230" width="360" height="30" fill="#ffe0b2" stroke="#e65100" class="box" rx="3"/>
+                <text x="750" y="250" text-anchor="middle" class="small-text">❌ /dev (device filesystem)</text>
+                
+                <rect x="570" y="265" width="360" height="30" fill="#ffe0b2" stroke="#e65100" class="box" rx="3"/>
+                <text x="750" y="285" text-anchor="middle" class="small-text">❌ /sys (system filesystem)</text>
+                
+                <rect x="570" y="300" width="360" height="30" fill="#ffe0b2" stroke="#e65100" class="box" rx="3"/>
+                <text x="750" y="320" text-anchor="middle" class="small-text">❌ /etc/hostname, /etc/hosts, /etc/resolv.conf</text>
+                
+                <rect x="570" y="335" width="360" height="30" fill="#ffe0b2" stroke="#e65100" class="box" rx="3"/>
+                <text x="750" y="355" text-anchor="middle" class="small-text">❌ /sys/fs/cgroup (cgroup filesystem)</text>
+                
+                <text x="750" y="385" text-anchor="middle" class="small-text" fill="#e65100" font-style="italic">These mounts are NOT checkpointed</text>
+                
+                <rect x="200" y="470" width="600" height="380" fill="#e8f5e9" stroke="#388e3c" class="box" rx="5"/>
+                <text x="500" y="495" text-anchor="middle" fill="#388e3c" class="title-text">Checkpoint Output Files</text>
+                <text x="500" y="515" text-anchor="middle" class="small-text" fill="#388e3c">(Generated in checkpoint directory)</text>
+                
+                <rect x="220" y="540" width="250" height="40" fill="#c8e6c9" stroke="#388e3c" class="box" rx="3"/>
+                <text x="345" y="565" text-anchor="middle" class="small-text">core-*.img (process state)</text>
+                
+                <rect x="530" y="540" width="250" height="40" fill="#c8e6c9" stroke="#388e3c" class="box" rx="3"/>
+                <text x="655" y="565" text-anchor="middle" class="small-text">pages-*.img (memory pages)</text>
+                
+                <rect x="220" y="590" width="250" height="40" fill="#c8e6c9" stroke="#388e3c" class="box" rx="3"/>
+                <text x="345" y="615" text-anchor="middle" class="small-text">pagemap-*.img (memory map)</text>
+                
+                <rect x="530" y="590" width="250" height="40" fill="#c8e6c9" stroke="#388e3c" class="box" rx="3"/>
+                <text x="655" y="615" text-anchor="middle" class="small-text">fdinfo-*.img (file descriptors)</text>
+                
+                <rect x="220" y="640" width="250" height="40" fill="#c8e6c9" stroke="#388e3c" class="box" rx="3"/>
+                <text x="345" y="665" text-anchor="middle" class="small-text">mountpoints-*.img (mount info)</text>
+                
+                <rect x="530" y="640" width="250" height="40" fill="#c8e6c9" stroke="#388e3c" class="box" rx="3"/>
+                <text x="655" y="665" text-anchor="middle" class="small-text">netdev-*.img (network state)</text>
+                
+                <rect x="220" y="690" width="250" height="40" fill="#a5d6a7" stroke="#388e3c" class="box" rx="3"/>
+                <text x="345" y="715" text-anchor="middle" class="small-text">container.json (metadata)</text>
+                
+                <rect x="530" y="690" width="250" height="40" fill="#a5d6a7" stroke="#388e3c" class="box" rx="3"/>
+                <text x="655" y="715" text-anchor="middle" class="small-text">dump.log (CRIU logs)</text>
+                
+                <rect x="220" y="750" width="560" height="80" fill="#fff" stroke="#388e3c" class="box" rx="3" stroke-dasharray="5,5"/>
+                <text x="500" y="775" text-anchor="middle" class="small-text" font-weight="bold">Complete checkpoint can be restored later</text>
+                <text x="500" y="795" text-anchor="middle" class="small-text">All container state saved except external mounts</text>
+                <text x="500" y="815" text-anchor="middle" class="small-text">(which will be re-mounted during restore)</text>
+                
+                <path d="M 500 100 L 250 150" stroke="#666" class="arrow" marker-end="url(#arrowhead4)"/>
+                <path d="M 450 380 L 450 470" stroke="#666" class="arrow" marker-end="url(#arrowhead4)"/>
+                <path d="M 450 275 L 550 275" stroke="#666" class="arrow" marker-end="url(#arrowhead4)" stroke-dasharray="5,5"/>
+                
+                <text x="350" y="125" text-anchor="middle" class="small-text" fill="#666">configure</text>
+                <text x="420" y="430" text-anchor="middle" class="small-text" fill="#666">execute dump →</text>
+                <text x="420" y="445" text-anchor="middle" class="small-text" fill="#666">generates files</text>
+                <text x="500" y="265" text-anchor="middle" class="small-text" fill="#f57c00">mark as external</text>
+            </svg>ding criu-config-external-mounts.svg…]()
 
 ```go
 criuOpts := &rpc.CriuOpts{

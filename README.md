@@ -212,15 +212,6 @@ External: []string{
 - **Bind Mounts**: Handle Docker's special bind mounts for networking
 - **Overlays**: Work with Docker's overlay filesystem layers
 
-### Part 4: Error Handling and Debugging
-
-Comprehensive error handling is crucial for production use:
-
-1. **CRIU Log Analysis**: Parse and display CRIU logs on failure
-2. **Container State Validation**: Verify container prerequisites
-3. **Filesystem Checks**: Ensure all required paths exist
-4. **Permission Validation**: Check for required capabilities
-
 ## Implementation Walkthrough
 
 ### Step 1: Container Discovery and Validation

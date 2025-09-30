@@ -109,6 +109,7 @@ sudo ./docker-checkpoint -container test-app -name checkpoint1
 ls -la /tmp/docker-checkpoints/test-app/checkpoint1/
 ```
 <img width="1473" height="815" alt="image" src="https://github.com/user-attachments/assets/852e3781-9796-4dfa-8923-2eef9a2a74ff" />
+<img width="1473" height="815" alt="image" src="https://github.com/user-attachments/assets/7dd7ba30-e3c9-47a7-a44a-7f45d26a2a89" />
 
 ### Command Line Options
 

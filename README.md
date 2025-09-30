@@ -45,6 +45,7 @@ cd Docker-container-checkpointing-with-Go-Criu
 chmod +x scripts/setup.sh
 ./scripts/setup.sh
 ```
+<img width="1473" height="815" alt="image" src="https://github.com/user-attachments/assets/26d3ded2-2972-44a7-89f4-4707650173bf" />
 
 The setup script will:
 1. Update system packages
@@ -107,6 +108,7 @@ sudo ./docker-checkpoint -container test-app -name checkpoint1
 # Check the checkpoint files
 ls -la /tmp/docker-checkpoints/test-app/checkpoint1/
 ```
+<img width="1473" height="815" alt="image" src="https://github.com/user-attachments/assets/852e3781-9796-4dfa-8923-2eef9a2a74ff" />
 
 ### Command Line Options
 

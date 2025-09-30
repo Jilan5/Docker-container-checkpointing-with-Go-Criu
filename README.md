@@ -138,106 +138,9 @@ sudo ./docker-checkpoint -container nginx -tcp=true
 ```
 
 ## Architecture & Implementation
+### Part 1: Docker Container Inspection
 
-### Core Components
-
-1. **Container Inspection**
-   - Connects to Docker API using Docker client
-   - Extracts container metadata (PID, namespaces, mounts, cgroups)
-   - Validates container is running
-
-2. **CRIU Configuration**
-   - Sets up CRIU options for Docker containers
-   - Configures external mount handling for Docker's bind mounts
-   - Manages cgroup and namespace settings
-
-3. **Checkpoint Execution**
-   - Performs the actual CRIU dump operation
-   - Handles pre-dump optimization if requested
-   - Saves container metadata for future restoration
-
-4. **Error Handling**
-   - Provides detailed error messages
-   - Shows CRIU logs on failure
-   - Validates prerequisites
-
-### Go Code Implementation
-
-#### Main Function Flow
-The application follows a structured approach:
-
-```go
-func main() {
-    // Parse command line flags using Go's flag package
-    flag.StringVar(&containerName, "container", "", "Container name or ID to checkpoint")
-    flag.BoolVar(&leaveRunning, "leave-running", true, "Leave container running after checkpoint")
-    // ... other flags
-
-    // Create options struct and call checkpoint function
-    opts := Options{LeaveRunning: leaveRunning, TCPEstablished: tcpEstablished, ...}
-    checkpointContainer(containerName, checkpointName, baseDir, opts)
-}
-```
-
-#### Docker API Integration
-The `inspectContainer()` function demonstrates Docker API usage:
-
-```go
-func inspectContainer(containerName string) (*ContainerInfo, error) {
-    // Create Docker client using environment variables (DOCKER_HOST, etc.)
-    cli, err := client.NewClientWithOpts(client.FromEnv)
-
-    // Inspect container to get detailed information
-    containerJSON, err := cli.ContainerInspect(ctx, containerName)
-
-    // Extract critical information for checkpointing
-    info := &ContainerInfo{
-        ID:         containerJSON.ID[:12],                              // Short container ID
-        PID:        containerJSON.State.Pid,                          // Main process PID
-        RootFS:     containerJSON.GraphDriver.Data["MergedDir"],      // Container filesystem root
-        Runtime:    containerJSON.HostConfig.Runtime,                 // Container runtime (runc/containerd)
-    }
-
-    // Map all Linux namespaces for the container process
-    for _, ns := range []string{"ipc", "mnt", "net", "pid", "user", "uts", "cgroup"} {
-        info.Namespaces[ns] = fmt.Sprintf("/proc/%d/ns/%s", info.PID, ns)
-    }
-}
-```
-
-#### CRIU Configuration and Execution
-The `doCRIUCheckpoint()` function shows CRIU library usage:
-
-```go
-func doCRIUCheckpoint(info *ContainerInfo, checkpointDir string, opts Options) error {
-    // Initialize CRIU client from go-criu library
-    criuClient := criu.MakeCriu()
-    criuClient.SetCriuPath("criu")
-
-    // Configure CRIU options using protocol buffers
-    criuOpts := &rpc.CriuOpts{
-        Pid:            proto.Int32(int32(info.PID)),        // Target process PID
-        LogLevel:       proto.Int32(4),                      // Verbose logging
-        Root:           proto.String(info.RootFS),           // Container root filesystem
-        ManageCgroups:  proto.Bool(true),                    // Handle cgroup hierarchy
-        ShellJob:       proto.Bool(true),                    // Required for docker containers
-
-        // Mark Docker-managed mounts as external (don't checkpoint them)
-        External: []string{
-            "mnt[/proc]:proc",         // Process filesystem
-            "mnt[/dev]:dev",           // Device filesystem
-            "mnt[/etc/hostname]:hostname", // Docker networking files
-            // ... other Docker bind mounts
-        },
-    }
-
-    // Execute the checkpoint operation
-    return criuClient.Dump(criuOpts, nil)
-}
-```
-
-
-### Container Information Structure
+The application needs to gather comprehensive container information before checkpointing:
 
 ```go
 type ContainerInfo struct {
@@ -253,9 +156,16 @@ type ContainerInfo struct {
 }
 ```
 
-### CRIU Configuration
+**Key Implementation Points:**
 
-The application configures CRIU with Docker-specific options:
+1. **Docker API Connection**: Use the official Docker Go client with environment-based configuration
+2. **Container Validation**: Ensure the container is running before attempting checkpoint
+3. **Namespace Discovery**: Map all container namespaces for CRIU
+4. **Path Resolution**: Extract correct filesystem and bundle paths
+
+### Part 2: CRIU Configuration
+
+CRIU requires specific configuration for Docker containers:
 
 ```go
 criuOpts := &rpc.CriuOpts{
@@ -271,7 +181,14 @@ criuOpts := &rpc.CriuOpts{
 }
 ```
 
-### Mount Point Handling
+**Critical Configuration:**
+
+1. **External Mounts**: Docker uses bind mounts that must be marked as external
+2. **Cgroup Management**: CRIU must understand Docker's cgroup hierarchy
+3. **Namespace Handling**: All container namespaces must be properly configured
+4. **Filesystem Root**: Set the correct container root filesystem
+
+### Part 3: Mount Point Handling
 
 Docker containers have complex mount structures that require special handling:
 
@@ -287,6 +204,100 @@ External: []string{
     "mnt[/etc/hosts]:hosts",        // Docker bind mounts
     "mnt[/etc/resolv.conf]:resolv.conf", // DNS configuration
     "mnt[/sys/fs/cgroup]:cgroup",   // Cgroup filesystem
+}
+```
+
+**Mount Strategy:**
+- **External Mounts**: Mark system and Docker-managed mounts as external
+- **Bind Mounts**: Handle Docker's special bind mounts for networking
+- **Overlays**: Work with Docker's overlay filesystem layers
+
+### Part 4: Error Handling and Debugging
+
+Comprehensive error handling is crucial for production use:
+
+1. **CRIU Log Analysis**: Parse and display CRIU logs on failure
+2. **Container State Validation**: Verify container prerequisites
+3. **Filesystem Checks**: Ensure all required paths exist
+4. **Permission Validation**: Check for required capabilities
+
+## Implementation Walkthrough
+
+### Step 1: Container Discovery and Validation
+
+```go
+func inspectContainer(containerName string) (*ContainerInfo, error) {
+    ctx := context.Background()
+    cli, err := client.NewClientWithOpts(client.FromEnv)
+    if err != nil {
+        return nil, fmt.Errorf("failed to create docker client: %w", err)
+    }
+
+    if err != nil {
+        return nil, fmt.Errorf("failed to inspect container: %w", err)
+    }
+
+    if !containerJSON.State.Running {
+        return nil, fmt.Errorf("container %s is not running", containerName)
+    }
+
+    // Extract and validate container information...
+}
+```
+
+### Step 2: CRIU Configuration and Execution
+
+```go
+func doCRIUCheckpoint(info *ContainerInfo, checkpointDir string, opts Options) error {
+    criuClient := criu.MakeCriu()
+    criuClient.SetCriuPath("criu")
+
+    // Configure CRIU options...
+    criuOpts := &rpc.CriuOpts{
+        // Configuration as shown above...
+    }
+
+    // Set working directory
+    workDir, err := os.Open(checkpointDir)
+    if err != nil {
+        return fmt.Errorf("failed to open checkpoint directory: %w", err)
+    }
+    defer workDir.Close()
+
+    criuOpts.ImagesDirFd = proto.Int32(int32(workDir.Fd()))
+
+    // Execute checkpoint
+    if err := criuClient.Dump(criuOpts, nil); err != nil {
+        // Handle errors with detailed logging...
+    }
+}
+```
+
+### Step 3: Metadata Persistence
+
+```go
+func saveMetadata(info *ContainerInfo, checkpointDir string) error {
+    metadata := map[string]interface{}{
+        "id":          info.ID,
+        "name":        info.Name,
+        "runtime":     info.Runtime,
+        "rootfs":      info.RootFS,
+        "bundle_path": info.BundlePath,
+        "namespaces":  info.Namespaces,
+        "cgroup_path": info.CgroupPath,
+        "timestamp":   time.Now().Format(time.RFC3339),
+    }
+
+    metadataFile := filepath.Join(checkpointDir, "container.json")
+    file, err := os.Create(metadataFile)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
+
+    encoder := json.NewEncoder(file)
+    encoder.SetIndent("", "  ")
+    return encoder.Encode(metadata)
 }
 ```
 

@@ -37,8 +37,8 @@ By using this project, you will understand:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd lab2-docker-checkpoint-complete
+git clone https://github.com/Jilan5/Docker-container-checkpointing-with-Go-Criu.git
+cd Docker-container-checkpointing-with-Go-Criu
 
 # Run the automated setup script
 chmod +x scripts/setup.sh

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This project demonstrates how to checkpoint Docker containers using CRIU (Checkpoint/Restore In Userspace). The implementation is a production-ready Go application that can inspect and checkpoint running Docker containers, understanding the complete flow from Docker API integration to CRIU system calls.
+This project demonstrates how to checkpoint Docker containers using CRIU (Checkpoint/Restore In Userspace). The implementation is a  Go application that can inspect and checkpoint running Docker containers, understanding the complete flow from Docker API integration to CRIU system calls.
 
 
 

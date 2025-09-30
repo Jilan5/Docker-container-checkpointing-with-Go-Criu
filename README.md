@@ -82,8 +82,13 @@ source ~/.bashrc
 sudo mkdir -p /etc/docker
 echo '{"experimental": true}' | sudo tee /etc/docker/daemon.json
 sudo systemctl restart docker
-
+```
+### Build the application
+```bash
 # Build the application
+git clone https://github.com/Jilan5/Docker-container-checkpointing-with-Go-Criu.git
+cd Docker-container-checkpointing-with-Go-Criu
+
 go mod tidy
 go build -o docker-checkpoint
 ```

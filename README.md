@@ -93,7 +93,6 @@ go mod tidy
 go build -o docker-checkpoint
 ```
 
-## Usage
 
 ### Basic Checkpoint
 

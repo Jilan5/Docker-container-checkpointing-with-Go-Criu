@@ -1,20 +1,12 @@
 # Docker Container Checkpoint with CRIU
 
-## Overview
+## Introduction
 
 This project demonstrates how to checkpoint Docker containers using CRIU (Checkpoint/Restore In Userspace). The implementation is a production-ready Go application that can inspect and checkpoint running Docker containers, understanding the complete flow from Docker API integration to CRIU system calls.
 
-## Features
 
-- ✅ **Docker Container Inspection**: Gather container metadata for checkpointing
-- ✅ **CRIU Integration**: Use CRIU to checkpoint running containers
-- ✅ **Mount Point Handling**: Properly handle Docker's bind mounts and external filesystems
-- ✅ **Configurable Options**: Support for various checkpoint options (leave-running, TCP connections, etc.)
-- ✅ **Automated Setup**: Scripts for easy deployment on any Ubuntu system
-- ✅ **Production Ready**: Comprehensive error handling and logging
 
-## Learning Outcomes
-
+## Objectives
 By using this project, you will understand:
 
 1. **Docker Container Internals**: How to inspect and extract container metadata

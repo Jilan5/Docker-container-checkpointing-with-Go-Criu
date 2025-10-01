@@ -147,7 +147,7 @@ sudo ./docker-checkpoint -container nginx -tcp=true
 <img width="1478" height="883" alt="image" src="https://github.com/user-attachments/assets/a0482ac6-a796-4347-811c-70d5fefff890" />
 
 ## Architecture & Implementation
-<img width="956" height="1627" alt="go-criu-workflow drawio" src="https://github.com/user-attachments/assets/65ee3e81-4664-4362-8784-efeca0c94645" />
+<img width="956" height="1627" alt="go-criu-d2-workflow drawio" src="https://github.com/user-attachments/assets/c305cb89-7cc9-4945-aa71-5abd68a36c3c" />
 
 ### Part 1: Docker Container Inspection
 
